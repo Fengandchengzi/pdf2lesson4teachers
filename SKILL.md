@@ -516,7 +516,7 @@ HTML 整体结构：
     教师面板 HTML（来自 navigation.md）
 
     <script>
-      导航 JS（来自 navigation.md）
+      导航 IIFE（来自 navigation.md，三段式：声明 → 函数 → init()）
       + TTS play()/playSequence()（来自 navigation.md）
       + 交互组件逻辑（闪卡翻转/倒计时等）
     </script>

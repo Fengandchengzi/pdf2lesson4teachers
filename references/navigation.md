@@ -182,17 +182,21 @@
 ## JavaScript 模板
 
 ```javascript
-// === PPT 导航系统 ===
+// === PPT 导航系统（三段式结构：声明 → 函数 → init） ===
 
 (function() {
+
+  // ========== 第1段：所有变量声明 ==========
+  // 所有 const/let 集中在此，保证最先执行，杜绝 TDZ
   const slides = document.querySelectorAll('.slide');
   const totalSlides = slides.length;
   let currentSlide = 0;
+  let touchStartX = 0;
+  const teacherPanel = document.querySelector('.teacher-panel');
+  const teacherNotes = {};
 
-  // 初始化
-  document.getElementById('nav-total').textContent = totalSlides;
-  buildPhaseProgress();
-  showSlide(0);
+  // ========== 第2段：所有函数定义 ==========
+  // 纯函数声明，不执行任何操作
 
   // 构建分段进度条（每个 slide 一个小段，按 data-phase 配色）
   function buildPhaseProgress() {
@@ -210,27 +214,19 @@
 
   // 核心：显示指定 Slide
   function showSlide(index) {
-    // 边界检查
     if (index < 0 || index >= totalSlides) return;
 
-    // 隐藏所有 Slide
     slides.forEach(s => s.classList.remove('active'));
 
-    // 显示目标 Slide
     currentSlide = index;
     slides[currentSlide].classList.add('active');
 
-    // 更新导航信息
     document.getElementById('nav-current').textContent = currentSlide + 1;
 
-    // 更新按钮状态
     document.querySelector('.nav-prev').disabled = (currentSlide === 0);
     document.querySelector('.nav-next').disabled = (currentSlide === totalSlides - 1);
 
-    // 更新分段进度条
     updatePhaseProgress();
-
-    // 更新教师备注
     updateTeacherNote();
   }
 
@@ -249,58 +245,8 @@
     });
   }
 
-  // 前进 / 后退
   function nextSlide() { showSlide(currentSlide + 1); }
   function prevSlide() { showSlide(currentSlide - 1); }
-
-  // 暴露到全局（供 onclick 调用）
-  window.nextSlide = nextSlide;
-  window.prevSlide = prevSlide;
-  window.showSlide = showSlide;
-
-  // 键盘导航
-  document.addEventListener('keydown', function(e) {
-    switch(e.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
-      case ' ':
-        e.preventDefault();
-        nextSlide();
-        break;
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        e.preventDefault();
-        prevSlide();
-        break;
-      case 't':
-      case 'T':
-        toggleTeacherPanel();
-        break;
-    }
-  });
-
-  // 触摸滑动
-  let touchStartX = 0;
-  document.addEventListener('touchstart', function(e) {
-    touchStartX = e.changedTouches[0].screenX;
-  });
-  document.addEventListener('touchend', function(e) {
-    const diff = touchStartX - e.changedTouches[0].screenX;
-    if (Math.abs(diff) > 50) {
-      if (diff > 0) nextSlide();  // 左滑 → 下一页
-      else prevSlide();            // 右滑 → 上一页
-    }
-  });
-
-  // 教师面板
-  const teacherPanel = document.querySelector('.teacher-panel');
-  const teacherNotes = {};
-
-  // 收集所有教师备注（从 data-teacher-note 属性）
-  slides.forEach((slide, i) => {
-    const note = slide.getAttribute('data-teacher-note');
-    if (note) teacherNotes[i] = note;
-  });
 
   function updateTeacherNote() {
     if (!teacherPanel) return;
@@ -315,7 +261,62 @@
       teacherPanel.classList.toggle('visible');
     }
   }
-  window.toggleTeacherPanel = toggleTeacherPanel;
+
+  // ========== 第3段：初始化（最后执行） ==========
+  // 收集数据 + 绑定事件 + 启动，必须放在最末尾
+  function init() {
+    // 收集教师备注
+    slides.forEach((slide, i) => {
+      const note = slide.getAttribute('data-teacher-note');
+      if (note) teacherNotes[i] = note;
+    });
+
+    // 导航初始化
+    document.getElementById('nav-total').textContent = totalSlides;
+    buildPhaseProgress();
+    showSlide(0);
+
+    // 暴露全局函数（供 onclick 调用）
+    window.nextSlide = nextSlide;
+    window.prevSlide = prevSlide;
+    window.showSlide = showSlide;
+    window.toggleTeacherPanel = toggleTeacherPanel;
+
+    // 键盘导航
+    document.addEventListener('keydown', function(e) {
+      switch(e.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+        case ' ':
+          e.preventDefault();
+          nextSlide();
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          e.preventDefault();
+          prevSlide();
+          break;
+        case 't':
+        case 'T':
+          toggleTeacherPanel();
+          break;
+      }
+    });
+
+    // 触摸滑动
+    document.addEventListener('touchstart', function(e) {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+    document.addEventListener('touchend', function(e) {
+      const diff = touchStartX - e.changedTouches[0].screenX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) nextSlide();  // 左滑 → 下一页
+        else prevSlide();            // 右滑 → 上一页
+      }
+    });
+  }
+
+  init();
 
 })();
 ```
@@ -364,6 +365,7 @@ function playSequence(filenames, index = 0) {
 □ 按 → 到最后一页时按钮禁用
 □ 按 ← 到第一页时按钮禁用
 □ 没有使用 animation-fill-mode: forwards
+□ JS 遵循三段式结构：声明 → 函数 → init()
 □ 教师备注面板按 T 能切换
 □ 分段进度条颜色随环节变化，未到达段半透明
 ```
